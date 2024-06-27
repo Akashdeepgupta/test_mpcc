@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -173,6 +171,11 @@ void *run_server(void *arg)
 
 chat_server_t *create_chat_server(int id, int port)
 {
+	log_debug("Creating chat server with id %d and port %d", id, port);
+	if (id <= 0 || port <= 0 || port > 65535) {
+        	log_error("Invalid id or port number");
+        	return NULL;
+    	}
     chat_server_t *server = malloc(sizeof(chat_server_t));
     if (server == NULL)
     {
@@ -182,7 +185,13 @@ chat_server_t *create_chat_server(int id, int port)
 
     server->id = id;
     server->port = port;
-    pthread_mutex_init(&server->clients_mutex, NULL);
+    //pthread_mutex_init(&server->clients_mutex, NULL);
+
+    if (pthread_mutex_init(&server->clients_mutex, NULL) != 0) {
+        log_error("Failed to initialize clients mutex");
+        free(server);
+        return NULL;
+    }
 
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
@@ -193,9 +202,10 @@ chat_server_t *create_chat_server(int id, int port)
     if (pthread_create(&thread_id, NULL, run_server, (void *)server) != 0)
     {
         log_error("Failed to create thread for chat server %d", id);
-        free(server);
+        pthread_mutex_destroy(&server->clients_mutex);
+       	free(server);
         return NULL;
     }
-
+	log_debug("Chat server thread created successfully.");
     return server;
 }

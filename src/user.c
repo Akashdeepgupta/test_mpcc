@@ -69,7 +69,7 @@ int authenticate_user(const char *username, const char *password)
     log_debug(username);
     while (fgets(line, sizeof(line), file))
     {
-        log_debug(line);
+//        log_debug(line);
         char *stored_username = strtok(line, ":");
         char *stored_password = strtok(NULL, "\n");
 

@@ -1,14 +1,19 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <time.h>
-#include "logger.h"
 #include <string.h>
-#define LOG_FILE "mpcc.log"
+#include "logger.h"
+
+#define LOG_FILE "server.log"
 #define MAX_LOG_LENGTH 1024
+#define TIME_BUF_SIZE 64
+
 static FILE *log_file = NULL;
 
 int init_logger()
 {
-    log_file = fopen("server.log", "a");
+    log_file = fopen(LOG_FILE, "a");
     if (log_file == NULL)
     {
         perror("Failed to open log file");
@@ -19,40 +24,32 @@ int init_logger()
 
 void log_message(const char *level, const char *format, va_list args)
 {
-
     if (log_file == NULL)
     {
         fprintf(stderr, "Logger not initialized\n");
         return;
     }
+
     time_t now = time(NULL);
-    char time_buf[64];
+    char time_buf[TIME_BUF_SIZE];
     strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", localtime(&now));
 
-    fprintf(log_file, "[%s] %s: ", time_buf, level);
-    vfprintf(log_file, format, args);
-    fprintf(log_file, "\n");
+    char log_buf[MAX_LOG_LENGTH];
+    int prefix_len = snprintf(log_buf, sizeof(log_buf), "[%s] %s: ", time_buf, level);
+    
+    if (prefix_len < 0 || prefix_len >= sizeof(log_buf))
+    {
+        fprintf(stderr, "Error formatting log prefix\n");
+        return;
+    }
+
+    vsnprintf(log_buf + prefix_len, sizeof(log_buf) - prefix_len, format, args);
+    log_buf[sizeof(log_buf) - 1] = '\0'; // Ensure null-termination
+
+    fprintf(log_file, "%s\n", log_buf);
     fflush(log_file);
-
-    // Also print to stdout for immediate feedback
-    printf("[%s] %s: ", time_buf, level);
-    vprintf(format, args);
-    printf("\n");
-
-    // old stuff
-
-    // time_t now;
-    // time(&now);
-    // char *date = ctime(&now);
-    // date[24] = '\0'; // Remove newline
-
-    // char message[MAX_LOG_LENGTH];
-    // vsnprintf(message, sizeof(message), format, args);
-
-    // fprintf(log_file, "[%s] %s: %s\n", date, level, message);
-    // fflush(log_file);
-
-    // printf("[%s] %s: %s\n", date, level, message);
+    
+    printf("%s\n", log_buf);
 }
 
 void log_fatal(const char *format, ...)
@@ -93,4 +90,13 @@ void log_debug(const char *format, ...)
     va_start(args, format);
     log_message("DEBUG", format, args);
     va_end(args);
+}
+
+void close_logger()
+{
+    if (log_file != NULL)
+    {
+        fclose(log_file);
+        log_file = NULL;
+    }
 }

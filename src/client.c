@@ -1,5 +1,3 @@
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -107,6 +105,12 @@ void run_client()
     printf("Enter username: ");
     if (fgets(username, sizeof(username), stdin) == NULL)
     {
+        log_error("Error reading username");
+        close(client_socket);
+        return;
+    }
+    if(username[0] == ''){
+    	
         log_error("Error reading username");
         close(client_socket);
         return;
